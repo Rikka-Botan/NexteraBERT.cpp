@@ -1,0 +1,116 @@
+[
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q8_0.gguf",
+    "ftype": "Q8_0",
+    "size_mib": 219.35711669921875,
+    "n_masked": 35500,
+    "n_docs": 1000,
+    "lengths": [
+      64,
+      128,
+      256,
+      512
+    ],
+    "accuracy_ref": 0.5749295774647887,
+    "accuracy": 0.5750985915492958,
+    "accuracy_se": 0.0026236207727259693,
+    "accuracy_diff": 0.00016901408450704225,
+    "accuracy_diff_se": 0.000522463968645327,
+    "top1_agreement": 0.9682535211267606
+  },
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q6_K.gguf",
+    "ftype": "Q6_K",
+    "size_mib": 170.38983154296875,
+    "n_masked": 35500,
+    "n_docs": 1000,
+    "lengths": [
+      64,
+      128,
+      256,
+      512
+    ],
+    "accuracy_ref": 0.5749295774647887,
+    "accuracy": 0.5732112676056338,
+    "accuracy_se": 0.002625122989985697,
+    "accuracy_diff": -0.0017183098591549296,
+    "accuracy_diff_se": 0.0006527133833676899,
+    "top1_agreement": 0.9516901408450704
+  },
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q5_K_M.gguf",
+    "ftype": "Q5_K_M",
+    "size_mib": 153.27508544921875,
+    "n_masked": 35500,
+    "n_docs": 1000,
+    "lengths": [
+      64,
+      128,
+      256,
+      512
+    ],
+    "accuracy_ref": 0.5749295774647887,
+    "accuracy": 0.5735774647887324,
+    "accuracy_se": 0.0026248345711803902,
+    "accuracy_diff": -0.001352112676056338,
+    "accuracy_diff_se": 0.0007356128138633222,
+    "top1_agreement": 0.9385915492957746
+  },
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q4_K_M.gguf",
+    "ftype": "Q4_K_M",
+    "size_mib": 137.28289794921875,
+    "n_masked": 35500,
+    "n_docs": 1000,
+    "lengths": [
+      64,
+      128,
+      256,
+      512
+    ],
+    "accuracy_ref": 0.5749295774647887,
+    "accuracy": 0.5729014084507043,
+    "accuracy_se": 0.0026253658880932163,
+    "accuracy_diff": -0.0020281690140845072,
+    "accuracy_diff_se": 0.0009460284572383013,
+    "top1_agreement": 0.9021971830985915
+  },
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q4_K_S.gguf",
+    "ftype": "Q4_K_S",
+    "size_mib": 118.07586669921875,
+    "n_masked": 35500,
+    "n_docs": 1000,
+    "lengths": [
+      64,
+      128,
+      256,
+      512
+    ],
+    "accuracy_ref": 0.5749295774647887,
+    "accuracy": 0.5681408450704225,
+    "accuracy_se": 0.0026289655505009587,
+    "accuracy_diff": -0.006788732394366197,
+    "accuracy_diff_se": 0.001148180457100233,
+    "top1_agreement": 0.8570140845070423
+  },
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q4_0.gguf",
+    "ftype": "Q4_0",
+    "size_mib": 118.01336669921875,
+    "n_masked": 35500,
+    "n_docs": 1000,
+    "lengths": [
+      64,
+      128,
+      256,
+      512
+    ],
+    "accuracy_ref": 0.5749295774647887,
+    "accuracy": 0.5569295774647888,
+    "accuracy_se": 0.0026364670299991793,
+    "accuracy_diff": -0.018,
+    "accuracy_diff_se": 0.001301139567439289,
+    "top1_agreement": 0.8234366197183098
+  }
+]

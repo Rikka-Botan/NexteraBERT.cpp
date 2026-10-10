@@ -1,0 +1,366 @@
+[
+  {
+    "file": "nexterabert-mezzoforte-220m-en-f32.gguf",
+    "ftype": "F32",
+    "size_mib": 814.7516479492188,
+    "tokenizer_ok": true,
+    "hidden": {
+      "token_cos_mean": 0.9999999999969572,
+      "token_cos_min": 0.9999999998184782,
+      "token_cos_p01": 0.9999999999828935,
+      "pooled_cos_mean": 0.9999999999999374,
+      "pooled_cos_min": 0.9999999999998612,
+      "rel_l2_err_mean": 1.320172959632752e-06,
+      "by_length": {
+        "16": {
+          "token_cos_mean": 0.9999999999996468,
+          "pooled_cos_mean": 0.9999999999999195
+        },
+        "64": {
+          "token_cos_mean": 0.999999999999608,
+          "pooled_cos_mean": 0.9999999999999479
+        },
+        "128": {
+          "token_cos_mean": 0.9999999999995651,
+          "pooled_cos_mean": 0.9999999999999604
+        },
+        "512": {
+          "token_cos_mean": 0.9999999999993445,
+          "pooled_cos_mean": 0.9999999999999645
+        },
+        "2048": {
+          "token_cos_mean": 0.9999999999960935,
+          "pooled_cos_mean": 0.9999999999998949
+        }
+      }
+    },
+    "mlm": {
+      "n_masked": 1272,
+      "top1_agreement": 1.0,
+      "accuracy_ref": 0.5966981132075472,
+      "accuracy": 0.5966981132075472,
+      "kl_mean": 1.1008300772793074e-11
+    },
+    "sts": {
+      "n_pairs": 1379,
+      "spearman_gold_ref": 0.5301089572681273,
+      "spearman_gold": 0.5301081245930551,
+      "spearman_vs_ref": 0.999999993135958,
+      "mean_abs_sim_diff": 7.334958824063661e-08,
+      "embedding_cos_mean": 0.9999999999999202,
+      "embedding_cos_min": 0.9999999999992155
+    }
+  },
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q8_0.gguf",
+    "ftype": "Q8_0",
+    "size_mib": 219.35711669921875,
+    "tokenizer_ok": true,
+    "hidden": {
+      "token_cos_mean": 0.9994798472642161,
+      "token_cos_min": 0.9898277392661992,
+      "token_cos_p01": 0.9987056385883296,
+      "pooled_cos_mean": 0.9998628738665928,
+      "pooled_cos_min": 0.9996649248290764,
+      "rel_l2_err_mean": 0.033600617200136185,
+      "by_length": {
+        "16": {
+          "token_cos_mean": 0.9994134409163773,
+          "pooled_cos_mean": 0.9998032829714002
+        },
+        "64": {
+          "token_cos_mean": 0.9994165044323141,
+          "pooled_cos_mean": 0.9998240309736753
+        },
+        "128": {
+          "token_cos_mean": 0.9994131483923843,
+          "pooled_cos_mean": 0.9998538557441087
+        },
+        "512": {
+          "token_cos_mean": 0.9994180203987529,
+          "pooled_cos_mean": 0.9998910483042104
+        },
+        "2048": {
+          "token_cos_mean": 0.9995019709231608,
+          "pooled_cos_mean": 0.9999421513395697
+        }
+      }
+    },
+    "mlm": {
+      "n_masked": 1272,
+      "top1_agreement": 0.9630503144654088,
+      "accuracy_ref": 0.5966981132075472,
+      "accuracy": 0.5943396226415094,
+      "kl_mean": 0.0035679062513577966
+    },
+    "sts": {
+      "n_pairs": 1379,
+      "spearman_gold_ref": 0.5301089572681273,
+      "spearman_gold": 0.5275301459309284,
+      "spearman_vs_ref": 0.9990070190721927,
+      "mean_abs_sim_diff": 0.000786215520752263,
+      "embedding_cos_mean": 0.9997918639057307,
+      "embedding_cos_min": 0.9970832880398228
+    }
+  },
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q6_K.gguf",
+    "ftype": "Q6_K",
+    "size_mib": 170.38983154296875,
+    "tokenizer_ok": true,
+    "hidden": {
+      "token_cos_mean": 0.9987654355809604,
+      "token_cos_min": 0.9841964866600809,
+      "token_cos_p01": 0.9969364616555019,
+      "pooled_cos_mean": 0.9995370927518488,
+      "pooled_cos_min": 0.9991000794952981,
+      "rel_l2_err_mean": 0.0507391977434357,
+      "by_length": {
+        "16": {
+          "token_cos_mean": 0.9987964335267532,
+          "pooled_cos_mean": 0.99953163810323
+        },
+        "64": {
+          "token_cos_mean": 0.9986540557944358,
+          "pooled_cos_mean": 0.9993795208783908
+        },
+        "128": {
+          "token_cos_mean": 0.998641294321951,
+          "pooled_cos_mean": 0.9994765574683503
+        },
+        "512": {
+          "token_cos_mean": 0.9986364906615629,
+          "pooled_cos_mean": 0.9995830520206885
+        },
+        "2048": {
+          "token_cos_mean": 0.9988086690863752,
+          "pooled_cos_mean": 0.9997146952885839
+        }
+      }
+    },
+    "mlm": {
+      "n_masked": 1272,
+      "top1_agreement": 0.9465408805031447,
+      "accuracy_ref": 0.5966981132075472,
+      "accuracy": 0.5919811320754716,
+      "kl_mean": 0.008935587582706838
+    },
+    "sts": {
+      "n_pairs": 1379,
+      "spearman_gold_ref": 0.5301089572681273,
+      "spearman_gold": 0.5270736246646154,
+      "spearman_vs_ref": 0.9977389673779707,
+      "mean_abs_sim_diff": 0.0010766792850618867,
+      "embedding_cos_mean": 0.999424177100724,
+      "embedding_cos_min": 0.9913212192684762
+    }
+  },
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q5_K_M.gguf",
+    "ftype": "Q5_K_M",
+    "size_mib": 153.27508544921875,
+    "tokenizer_ok": true,
+    "hidden": {
+      "token_cos_mean": 0.9979302038175218,
+      "token_cos_min": 0.9550990632169755,
+      "token_cos_p01": 0.994372444408842,
+      "pooled_cos_mean": 0.9993629850145724,
+      "pooled_cos_min": 0.9988286393076194,
+      "rel_l2_err_mean": 0.06501688255618016,
+      "by_length": {
+        "16": {
+          "token_cos_mean": 0.9978823532198667,
+          "pooled_cos_mean": 0.9991775642762298
+        },
+        "64": {
+          "token_cos_mean": 0.9979332863176751,
+          "pooled_cos_mean": 0.9992299164439452
+        },
+        "128": {
+          "token_cos_mean": 0.997854234872798,
+          "pooled_cos_mean": 0.9993216153595682
+        },
+        "512": {
+          "token_cos_mean": 0.9977378134897233,
+          "pooled_cos_mean": 0.999446539914468
+        },
+        "2048": {
+          "token_cos_mean": 0.9979833269631811,
+          "pooled_cos_mean": 0.9996392890786515
+        }
+      }
+    },
+    "mlm": {
+      "n_masked": 1272,
+      "top1_agreement": 0.9331761006289309,
+      "accuracy_ref": 0.5966981132075472,
+      "accuracy": 0.5943396226415094,
+      "kl_mean": 0.014722590294366261
+    },
+    "sts": {
+      "n_pairs": 1379,
+      "spearman_gold_ref": 0.5301089572681273,
+      "spearman_gold": 0.5257679351756832,
+      "spearman_vs_ref": 0.9967320078284628,
+      "mean_abs_sim_diff": 0.0013647978075869798,
+      "embedding_cos_mean": 0.9992053489294751,
+      "embedding_cos_min": 0.9871495000254832
+    }
+  },
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q4_K_M.gguf",
+    "ftype": "Q4_K_M",
+    "size_mib": 137.28289794921875,
+    "tokenizer_ok": true,
+    "hidden": {
+      "token_cos_mean": 0.9950728668253487,
+      "token_cos_min": 0.9436259403234888,
+      "token_cos_p01": 0.9867538357347114,
+      "pooled_cos_mean": 0.9988048256799613,
+      "pooled_cos_min": 0.9967683583117583,
+      "rel_l2_err_mean": 0.0979764645298322,
+      "by_length": {
+        "16": {
+          "token_cos_mean": 0.9954858321718881,
+          "pooled_cos_mean": 0.9985731405393747
+        },
+        "64": {
+          "token_cos_mean": 0.9954914621005653,
+          "pooled_cos_mean": 0.9984290077412163
+        },
+        "128": {
+          "token_cos_mean": 0.9950086642945837,
+          "pooled_cos_mean": 0.9987175035490957
+        },
+        "512": {
+          "token_cos_mean": 0.9947740351096804,
+          "pooled_cos_mean": 0.999002056783092
+        },
+        "2048": {
+          "token_cos_mean": 0.9951352800183182,
+          "pooled_cos_mean": 0.9993024197870272
+        }
+      }
+    },
+    "mlm": {
+      "n_masked": 1272,
+      "top1_agreement": 0.9033018867924528,
+      "accuracy_ref": 0.5966981132075472,
+      "accuracy": 0.5801886792452831,
+      "kl_mean": 0.03960262430172877
+    },
+    "sts": {
+      "n_pairs": 1379,
+      "spearman_gold_ref": 0.5301089572681273,
+      "spearman_gold": 0.5215809580292081,
+      "spearman_vs_ref": 0.9903977931354212,
+      "mean_abs_sim_diff": 0.0021236671581918386,
+      "embedding_cos_mean": 0.9979131547504677,
+      "embedding_cos_min": 0.9562640743831636
+    }
+  },
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q4_K_S.gguf",
+    "ftype": "Q4_K_S",
+    "size_mib": 118.07586669921875,
+    "tokenizer_ok": true,
+    "hidden": {
+      "token_cos_mean": 0.9878081240808966,
+      "token_cos_min": 0.8795248597108963,
+      "token_cos_p01": 0.9726761421722846,
+      "pooled_cos_mean": 0.9939058378711122,
+      "pooled_cos_min": 0.9853379058618226,
+      "rel_l2_err_mean": 0.1628902018070221,
+      "by_length": {
+        "16": {
+          "token_cos_mean": 0.9864886614227739,
+          "pooled_cos_mean": 0.9938337280318451
+        },
+        "64": {
+          "token_cos_mean": 0.9864923538582371,
+          "pooled_cos_mean": 0.9920663868150341
+        },
+        "128": {
+          "token_cos_mean": 0.9856077623502232,
+          "pooled_cos_mean": 0.9929495043787046
+        },
+        "512": {
+          "token_cos_mean": 0.9865817762512422,
+          "pooled_cos_mean": 0.994372259754627
+        },
+        "2048": {
+          "token_cos_mean": 0.9883036597679521,
+          "pooled_cos_mean": 0.9963073103753494
+        }
+      }
+    },
+    "mlm": {
+      "n_masked": 1272,
+      "top1_agreement": 0.8616352201257862,
+      "accuracy_ref": 0.5966981132075472,
+      "accuracy": 0.5817610062893082,
+      "kl_mean": 0.08647639620164328
+    },
+    "sts": {
+      "n_pairs": 1379,
+      "spearman_gold_ref": 0.5301089572681273,
+      "spearman_gold": 0.5170434429930675,
+      "spearman_vs_ref": 0.9872650157107111,
+      "mean_abs_sim_diff": 0.0029174046640900965,
+      "embedding_cos_mean": 0.9937443200919874,
+      "embedding_cos_min": 0.9353689721586893
+    }
+  },
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q4_0.gguf",
+    "ftype": "Q4_0",
+    "size_mib": 118.01336669921875,
+    "tokenizer_ok": true,
+    "hidden": {
+      "token_cos_mean": 0.9816931194611797,
+      "token_cos_min": 0.893468341082014,
+      "token_cos_p01": 0.9596451490727599,
+      "pooled_cos_mean": 0.9914422520246229,
+      "pooled_cos_min": 0.9854865085930701,
+      "rel_l2_err_mean": 0.19459490701556206,
+      "by_length": {
+        "16": {
+          "token_cos_mean": 0.9828282142999224,
+          "pooled_cos_mean": 0.992225154648969
+        },
+        "64": {
+          "token_cos_mean": 0.9804328688927644,
+          "pooled_cos_mean": 0.9888508400720465
+        },
+        "128": {
+          "token_cos_mean": 0.9799491140685049,
+          "pooled_cos_mean": 0.99006879458567
+        },
+        "512": {
+          "token_cos_mean": 0.9793966824965383,
+          "pooled_cos_mean": 0.9916652087424064
+        },
+        "2048": {
+          "token_cos_mean": 0.9824067439412175,
+          "pooled_cos_mean": 0.9944012620740225
+        }
+      }
+    },
+    "mlm": {
+      "n_masked": 1272,
+      "top1_agreement": 0.8427672955974843,
+      "accuracy_ref": 0.5966981132075472,
+      "accuracy": 0.5817610062893082,
+      "kl_mean": 0.13043164122457407
+    },
+    "sts": {
+      "n_pairs": 1379,
+      "spearman_gold_ref": 0.5301089572681273,
+      "spearman_gold": 0.5300460891211187,
+      "spearman_vs_ref": 0.9868520635281052,
+      "mean_abs_sim_diff": 0.0032329569699714113,
+      "embedding_cos_mean": 0.9912613235376083,
+      "embedding_cos_min": 0.9638092784185148
+    }
+  }
+]

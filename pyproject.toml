@@ -1,0 +1,24 @@
+[project]
+name = "nexterabert-cpp"
+version = "0.1.0"
+description = "GGUF conversion, quantization and CPU inference for NexteraBERT, built on ggml"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "safetensors",
+    "gguf>=0.10",
+    "tokenizers",
+    "huggingface_hub",
+]
+
+[project.optional-dependencies]
+# Only needed to compare against the PyTorch reference (python/verify.py, python/bench.py).
+verify = [
+    "torch",
+    "transformers",
+    "datasets",
+    "scipy",
+    "matplotlib",
+]

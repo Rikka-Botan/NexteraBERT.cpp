@@ -1,0 +1,139 @@
+{
+  "PyTorch fp32": {
+    "ms": {
+      "128x1": 54.57,
+      "1024x1": 300.31,
+      "8192x1": 4197.25
+    },
+    "threads": {
+      "128x1": 20,
+      "1024x1": 20,
+      "8192x1": 20
+    },
+    "skipped": {
+      "65536x1": "out of memory (~512 GiB of attention scores)"
+    },
+    "torch": "2.12.0+cpu",
+    "repo": "RikkaBotan/NexteraBERT-Mezzoforte-220M-en",
+    "params_m": 212.63361
+  },
+  "PyTorch bert-base-uncased": {
+    "ms": {
+      "128x1": 26.49
+    },
+    "threads": {
+      "128x1": 20
+    },
+    "skipped": {
+      "1024x1": "position limit 512",
+      "8192x1": "position limit 512",
+      "65536x1": "position limit 512"
+    },
+    "torch": "2.12.0+cpu",
+    "repo": "google-bert/bert-base-uncased",
+    "params_m": 109.48224
+  },
+  "PyTorch ModernBERT-base": {
+    "ms": {
+      "128x1": 37.75,
+      "1024x1": 253.67,
+      "8192x1": 5521.75
+    },
+    "threads": {
+      "128x1": 20,
+      "1024x1": 20,
+      "8192x1": 20
+    },
+    "skipped": {
+      "65536x1": "position limit 8192"
+    },
+    "torch": "2.12.0+cpu",
+    "repo": "answerdotai/ModernBERT-base",
+    "params_m": 149.014272
+  },
+  "PyTorch LFM2.5-Encoder-230M": {
+    "ms": {
+      "128x1": 48.23,
+      "1024x1": 270.82,
+      "8192x1": 3542.22
+    },
+    "threads": {
+      "128x1": 20,
+      "1024x1": 20,
+      "8192x1": 20
+    },
+    "skipped": {
+      "65536x1": "out of memory (~512 GiB of attention scores)"
+    },
+    "torch": "2.12.0+cpu",
+    "repo": "LiquidAI/LFM2.5-Encoder-230M",
+    "params_m": 229.693184
+  },
+  "GGUF Q8_0": {
+    "ms": {
+      "128x1": 15.94,
+      "1024x1": 104.36,
+      "8192x1": 1711.54,
+      "65536x1": 97493.59
+    },
+    "threads": 18,
+    "system": "AVX2 = 1 | AVX_VNNI = 1 | FMA = 1 | F16C = 1 | AVX512 = 0 | NEON = 0 | LLAMAFILE = 1 | linear layers: 141 int8 (AVX-VNNI), 0 ggml repack | custom ops: AVX2",
+    "size_mib": 219.35711669921875
+  },
+  "GGUF Q6_K": {
+    "ms": {
+      "128x1": 15.83,
+      "1024x1": 105.02,
+      "8192x1": 1711.51,
+      "65536x1": 99134.01
+    },
+    "threads": 18,
+    "system": "AVX2 = 1 | AVX_VNNI = 1 | FMA = 1 | F16C = 1 | AVX512 = 0 | NEON = 0 | LLAMAFILE = 1 | linear layers: 141 int8 (AVX-VNNI), 0 ggml repack | custom ops: AVX2",
+    "size_mib": 170.38983154296875
+  },
+  "GGUF Q5_K_M": {
+    "ms": {
+      "128x1": 15.76,
+      "1024x1": 105.37,
+      "8192x1": 1712.97,
+      "65536x1": 99335.75
+    },
+    "threads": 18,
+    "system": "AVX2 = 1 | AVX_VNNI = 1 | FMA = 1 | F16C = 1 | AVX512 = 0 | NEON = 0 | LLAMAFILE = 1 | linear layers: 141 int8 (AVX-VNNI), 0 ggml repack | custom ops: AVX2",
+    "size_mib": 153.27508544921875
+  },
+  "GGUF Q4_K_M": {
+    "ms": {
+      "128x1": 15.92,
+      "1024x1": 105.45,
+      "8192x1": 1716.76,
+      "65536x1": 98951.67
+    },
+    "threads": 18,
+    "system": "AVX2 = 1 | AVX_VNNI = 1 | FMA = 1 | F16C = 1 | AVX512 = 0 | NEON = 0 | LLAMAFILE = 1 | linear layers: 141 int8 (AVX-VNNI), 0 ggml repack | custom ops: AVX2",
+    "size_mib": 137.28289794921875
+  },
+  "GGUF Q4_K_S": {
+    "ms": {
+      "128x1": 15.76,
+      "1024x1": 104.83,
+      "8192x1": 1717.97,
+      "65536x1": 99180.83
+    },
+    "threads": 18,
+    "system": "AVX2 = 1 | AVX_VNNI = 1 | FMA = 1 | F16C = 1 | AVX512 = 0 | NEON = 0 | LLAMAFILE = 1 | linear layers: 141 int8 (AVX-VNNI), 0 ggml repack | custom ops: AVX2",
+    "size_mib": 118.07586669921875
+  },
+  "GGUF Q4_0": {
+    "ms": {
+      "128x1": 15.83,
+      "1024x1": 105.24,
+      "8192x1": 1716.36,
+      "65536x1": 99020.28
+    },
+    "threads": 18,
+    "system": "AVX2 = 1 | AVX_VNNI = 1 | FMA = 1 | F16C = 1 | AVX512 = 0 | NEON = 0 | LLAMAFILE = 1 | linear layers: 141 int8 (AVX-VNNI), 0 ggml repack | custom ops: AVX2",
+    "size_mib": 118.01336669921875
+  },
+  "_note": "rebuilt from the per-cell log of the run (bench.py failed while printing its table)"
+}

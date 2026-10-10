@@ -1,0 +1,110 @@
+{
+  "PyTorch fp32": {
+    "ms": {
+      "128x1": 57.04780016094446,
+      "512x1": 158.60560024157166,
+      "1024x1": 299.51540008187294
+    },
+    "threads": {
+      "128x1": 20,
+      "512x1": 20,
+      "1024x1": 20
+    },
+    "skipped": {},
+    "torch": "2.12.0+cpu",
+    "repo": "RikkaBotan/NexteraBERT-Mezzoforte-220M-en",
+    "params_m": 212.63361,
+    "position_table_extended_from": null
+  },
+  "PyTorch bert-base-uncased": {
+    "ms": {
+      "128x1": 26.991200167685747,
+      "512x1": 82.78144989162683,
+      "1024x1": 167.31409984640777
+    },
+    "threads": {
+      "128x1": 20,
+      "512x1": 20,
+      "1024x1": 20
+    },
+    "skipped": {},
+    "torch": "2.12.0+cpu",
+    "repo": "google-bert/bert-base-uncased",
+    "params_m": 109.48224,
+    "position_table_extended_from": 512
+  },
+  "PyTorch ModernBERT-base": {
+    "ms": {
+      "128x1": 38.18519972264767,
+      "512x1": 115.46649993397295,
+      "1024x1": 253.29494988545775
+    },
+    "threads": {
+      "128x1": 20,
+      "512x1": 20,
+      "1024x1": 20
+    },
+    "skipped": {},
+    "torch": "2.12.0+cpu",
+    "repo": "answerdotai/ModernBERT-base",
+    "params_m": 149.014272,
+    "position_table_extended_from": null
+  },
+  "PyTorch LFM2.5-Encoder-230M": {
+    "ms": {
+      "128x1": 48.3175003901124,
+      "512x1": 145.55339980870485,
+      "1024x1": 284.6229998394847
+    },
+    "threads": {
+      "128x1": 20,
+      "512x1": 20,
+      "1024x1": 20
+    },
+    "skipped": {},
+    "torch": "2.12.0+cpu",
+    "repo": "LiquidAI/LFM2.5-Encoder-230M",
+    "params_m": 229.693184,
+    "position_table_extended_from": null
+  },
+  "GGUF Q8_0": {
+    "ms": {
+      "128x1": 15.977799892425537,
+      "512x1": 51.01950000971556,
+      "1024x1": 104.37195026315749
+    },
+    "threads": 18,
+    "system": "AVX2 = 1 | AVX_VNNI = 1 | FMA = 1 | F16C = 1 | AVX512 = 0 | NEON = 0 | LLAMAFILE = 1 | linear layers: 141 int8 (AVX-VNNI), 0 ggml repack | custom ops: AVX2",
+    "size_mib": 219.35711669921875
+  },
+  "GGUF Q5_K_M": {
+    "ms": {
+      "128x1": 15.655199997127056,
+      "512x1": 50.63604982569814,
+      "1024x1": 104.07684999518096
+    },
+    "threads": 18,
+    "system": "AVX2 = 1 | AVX_VNNI = 1 | FMA = 1 | F16C = 1 | AVX512 = 0 | NEON = 0 | LLAMAFILE = 1 | linear layers: 141 int8 (AVX-VNNI), 0 ggml repack | custom ops: AVX2",
+    "size_mib": 153.27508544921875
+  },
+  "GGUF Q4_K_M": {
+    "ms": {
+      "128x1": 15.662600053474307,
+      "512x1": 50.77920015901327,
+      "1024x1": 104.92089996114373
+    },
+    "threads": 18,
+    "system": "AVX2 = 1 | AVX_VNNI = 1 | FMA = 1 | F16C = 1 | AVX512 = 0 | NEON = 0 | LLAMAFILE = 1 | linear layers: 141 int8 (AVX-VNNI), 0 ggml repack | custom ops: AVX2",
+    "size_mib": 137.28289794921875
+  },
+  "GGUF Q4_0": {
+    "ms": {
+      "128x1": 15.859500039368868,
+      "512x1": 50.3926498349756,
+      "1024x1": 104.49839988723397
+    },
+    "threads": 18,
+    "system": "AVX2 = 1 | AVX_VNNI = 1 | FMA = 1 | F16C = 1 | AVX512 = 0 | NEON = 0 | LLAMAFILE = 1 | linear layers: 141 int8 (AVX-VNNI), 0 ggml repack | custom ops: AVX2",
+    "size_mib": 118.01336669921875
+  }
+}

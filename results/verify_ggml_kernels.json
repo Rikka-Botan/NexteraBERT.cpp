@@ -1,0 +1,198 @@
+[
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q8_0.gguf",
+    "ftype": "Q8_0",
+    "size_mib": 219.35711669921875,
+    "system": "AVX2 = 1 | AVX_VNNI = 1 | FMA = 1 | F16C = 1 | AVX512 = 0 | NEON = 0 | LLAMAFILE = 1 | linear layers: 0 int8 (AVX-VNNI), 0 ggml repack | custom ops: AVX2",
+    "tokenizer_ok": true,
+    "hidden": {
+      "token_cos_mean": 0.9998166836350587,
+      "token_cos_min": 0.9982696821803192,
+      "token_cos_p01": 0.9995680037763067,
+      "pooled_cos_mean": 0.9999418536939707,
+      "pooled_cos_min": 0.9998471259104726,
+      "rel_l2_err_mean": 0.01941734952076028,
+      "by_length": {
+        "16": {
+          "token_cos_mean": 0.9997908455524508,
+          "pooled_cos_mean": 0.9999255825290412
+        },
+        "64": {
+          "token_cos_mean": 0.9998110846095186,
+          "pooled_cos_mean": 0.9999299434561677
+        },
+        "128": {
+          "token_cos_mean": 0.9998187669715258,
+          "pooled_cos_mean": 0.9999495669680222
+        },
+        "512": {
+          "token_cos_mean": 0.999817670119216,
+          "pooled_cos_mean": 0.9999623218226517
+        }
+      }
+    },
+    "mlm": {
+      "n_masked": 1272,
+      "top1_agreement": 0.9787735849056604,
+      "accuracy_ref": 0.5966981132075472,
+      "accuracy": 0.5927672955974843,
+      "kl_mean": 0.0013279199145498214
+    },
+    "sts": {
+      "n_pairs": 1379,
+      "spearman_gold_ref": 0.5301089572681273,
+      "spearman_gold": 0.5296375445994902,
+      "spearman_vs_ref": 0.9995970086573245,
+      "mean_abs_sim_diff": 0.0004533281181064354,
+      "embedding_cos_mean": 0.9999245011721108,
+      "embedding_cos_min": 0.9990740656077391
+    }
+  },
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q4_K_M.gguf",
+    "ftype": "Q4_K_M",
+    "size_mib": 137.28289794921875,
+    "system": "AVX2 = 1 | AVX_VNNI = 1 | FMA = 1 | F16C = 1 | AVX512 = 0 | NEON = 0 | LLAMAFILE = 1 | linear layers: 0 int8 (AVX-VNNI), 76 ggml repack | custom ops: AVX2",
+    "tokenizer_ok": true,
+    "hidden": {
+      "token_cos_mean": 0.9950542642907707,
+      "token_cos_min": 0.942032836132467,
+      "token_cos_p01": 0.9877085573800949,
+      "pooled_cos_mean": 0.9987652949201716,
+      "pooled_cos_min": 0.9976080756252931,
+      "rel_l2_err_mean": 0.09611905133351684,
+      "by_length": {
+        "16": {
+          "token_cos_mean": 0.9956124843820233,
+          "pooled_cos_mean": 0.9986356199400351
+        },
+        "64": {
+          "token_cos_mean": 0.9956413191786236,
+          "pooled_cos_mean": 0.9985632031876426
+        },
+        "128": {
+          "token_cos_mean": 0.9952467030445397,
+          "pooled_cos_mean": 0.9988043397973326
+        },
+        "512": {
+          "token_cos_mean": 0.9949153283634954,
+          "pooled_cos_mean": 0.999058016755677
+        }
+      }
+    },
+    "mlm": {
+      "n_masked": 1272,
+      "top1_agreement": 0.9033018867924528,
+      "accuracy_ref": 0.5966981132075472,
+      "accuracy": 0.5872641509433962,
+      "kl_mean": 0.03884899155400475
+    },
+    "sts": {
+      "n_pairs": 1379,
+      "spearman_gold_ref": 0.5301089572681273,
+      "spearman_gold": 0.5239925562961361,
+      "spearman_vs_ref": 0.9921156603723359,
+      "mean_abs_sim_diff": 0.002012964389391616,
+      "embedding_cos_mean": 0.9981275876837753,
+      "embedding_cos_min": 0.9688873876020649
+    }
+  },
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q4_K_S.gguf",
+    "ftype": "Q4_K_S",
+    "size_mib": 118.07586669921875,
+    "system": "AVX2 = 1 | AVX_VNNI = 1 | FMA = 1 | F16C = 1 | AVX512 = 0 | NEON = 0 | LLAMAFILE = 1 | linear layers: 0 int8 (AVX-VNNI), 133 ggml repack | custom ops: AVX2",
+    "tokenizer_ok": true,
+    "hidden": {
+      "token_cos_mean": 0.9864488289342264,
+      "token_cos_min": 0.9298086601950207,
+      "token_cos_p01": 0.9717026773974786,
+      "pooled_cos_mean": 0.9933571629164183,
+      "pooled_cos_min": 0.9861696410184653,
+      "rel_l2_err_mean": 0.16459844820201397,
+      "by_length": {
+        "16": {
+          "token_cos_mean": 0.9867985392240374,
+          "pooled_cos_mean": 0.9939566537432917
+        },
+        "64": {
+          "token_cos_mean": 0.9866556971741893,
+          "pooled_cos_mean": 0.9921434802416832
+        },
+        "128": {
+          "token_cos_mean": 0.9856002484616758,
+          "pooled_cos_mean": 0.992971528720915
+        },
+        "512": {
+          "token_cos_mean": 0.9866241870758122,
+          "pooled_cos_mean": 0.9943569889597836
+        }
+      }
+    },
+    "mlm": {
+      "n_masked": 1272,
+      "top1_agreement": 0.8647798742138365,
+      "accuracy_ref": 0.5966981132075472,
+      "accuracy": 0.5825471698113207,
+      "kl_mean": 0.08569988374660055
+    },
+    "sts": {
+      "n_pairs": 1379,
+      "spearman_gold_ref": 0.5301089572681273,
+      "spearman_gold": 0.5153083497235189,
+      "spearman_vs_ref": 0.9880254623426278,
+      "mean_abs_sim_diff": 0.0028540597954377304,
+      "embedding_cos_mean": 0.9938722683710933,
+      "embedding_cos_min": 0.9428790440714642
+    }
+  },
+  {
+    "file": "nexterabert-mezzoforte-220m-en-Q4_0.gguf",
+    "ftype": "Q4_0",
+    "size_mib": 118.01336669921875,
+    "system": "AVX2 = 1 | AVX_VNNI = 1 | FMA = 1 | F16C = 1 | AVX512 = 0 | NEON = 0 | LLAMAFILE = 1 | linear layers: 0 int8 (AVX-VNNI), 141 ggml repack | custom ops: AVX2",
+    "tokenizer_ok": true,
+    "hidden": {
+      "token_cos_mean": 0.9800620535475176,
+      "token_cos_min": 0.9091809655515815,
+      "token_cos_p01": 0.9589679766151705,
+      "pooled_cos_mean": 0.9906756652603645,
+      "pooled_cos_min": 0.9854324348683428,
+      "rel_l2_err_mean": 0.19440215236196914,
+      "by_length": {
+        "16": {
+          "token_cos_mean": 0.9831117823669127,
+          "pooled_cos_mean": 0.9921751540810781
+        },
+        "64": {
+          "token_cos_mean": 0.9809147723264621,
+          "pooled_cos_mean": 0.9888901493563759
+        },
+        "128": {
+          "token_cos_mean": 0.9803658950584687,
+          "pooled_cos_mean": 0.9900065651286498
+        },
+        "512": {
+          "token_cos_mean": 0.9797841992968057,
+          "pooled_cos_mean": 0.9916307924753549
+        }
+      }
+    },
+    "mlm": {
+      "n_masked": 1272,
+      "top1_agreement": 0.8443396226415094,
+      "accuracy_ref": 0.5966981132075472,
+      "accuracy": 0.5801886792452831,
+      "kl_mean": 0.12845081686228757
+    },
+    "sts": {
+      "n_pairs": 1379,
+      "spearman_gold_ref": 0.5301089572681273,
+      "spearman_gold": 0.5303504513647973,
+      "spearman_vs_ref": 0.9876395373098406,
+      "mean_abs_sim_diff": 0.0030340148626331665,
+      "embedding_cos_mean": 0.9913525470453368,
+      "embedding_cos_min": 0.9702128217402014
+    }
+  }
+]
