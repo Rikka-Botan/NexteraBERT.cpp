@@ -144,6 +144,52 @@ pooled, hidden = model.encode_ids(ids, return_hidden=True)   # hidden[i]: (lengt
 Sequences of different lengths share a forward pass without padding, and each result is the
 same as if the sequence were run alone.
 
+### Fine-tuned classifiers
+
+A model fine-tuned with one of the Hugging Face task classes and saved with `save_pretrained`
+converts with its head. The task and the label names are read from its `config.json`:
+
+```bash
+python python/convert_hf_to_gguf.py path/to/finetuned-model --outfile models/my-classifier-f32.gguf
+build/bin/nexterabert-quantize models/my-classifier-f32.gguf models/my-classifier-Q4_K_M.gguf Q4_K_M
+```
+
+| Hugging Face class | Python | Result |
+|---|---|---|
+| `AutoModelForSequenceClassification` | `classify(texts, text_pairs=None)` | `(label, probability)` per text; the raw score for a one-label regression head |
+| | `logits(texts, text_pairs=None)` | `(n, n_labels)` logits |
+| `AutoModelForMultipleChoice` | `choose(prompt, choices)` | probability of each choice |
+| `AutoModelForTokenClassification` | `classify_tokens(text)` | `(token, label, probability)` per token |
+| `AutoModelForQuestionAnswering` | `answer(question, context)` | best span of the context and its score |
+| `AutoModel` (`pooler_output`) | `pooler_output(ids)` | `(n, 1024)` |
+
+```python
+clf = NexteraBERT("models/my-classifier-Q4_K_M.gguf")
+print(clf.task, clf.labels)                  # sequence-classification ['negative', 'neutral', 'positive']
+print(clf.classify(["a great movie", "a dull one"]))
+print(clf.classify("A man is playing a guitar.", "Someone plays an instrument."))   # sentence pair
+```
+
+`logits_ids(ids, token_type_ids=None)` is the call underneath all of them: it takes token ids
+and returns the logits of the file's head, per sequence or per token. `token_type_ids` are the
+segment ids of a model that was fine-tuned with them; the tokenizer does not produce them, so
+pass them the way the model was trained. Segment embeddings are stored only when fine-tuning
+has moved them from zero, and the pooler only with a head that reads it (`--pooler` keeps it
+for `pooler_output` alone; the pooler of the pretrained backbone is untrained).
+
+`python/verify_heads.py` builds a checkpoint for each of the four task classes, converts it,
+and compares the logits with PyTorch on sentences, sentence pairs with segment ids, and a
+735-token document in one batch. No fine-tuned NexteraBERT is published, so the heads are
+randomly initialized: the test covers the arithmetic, not task accuracy. An f32 file
+reproduces PyTorch to float rounding.
+
+| Task | Logits compared | f32: max logit difference | Q8_0: logit cosine | Q4_K_M: logit cosine |
+|---|---:|---:|---:|---:|
+| sequence-classification | 24 | 7.2e-07 | 0.9974 | 0.9833 |
+| multiple-choice | 8 | 7.2e-07 | 0.9985 | 0.9962 |
+| token-classification | 4,330 | 4.6e-06 | 0.9990 | 0.9940 |
+| question-answering | 1,732 | 4.6e-06 | 0.9989 | 0.9933 |
+
 ### C API
 
 ```c
@@ -157,7 +203,8 @@ nextera_encode(ctx, tokens, lengths, 1, /*hidden*/ NULL, embedding, /*normalize*
 nextera_free(ctx);
 ```
 
-`nextera_mlm_logits` returns masked-LM logits for chosen positions; see
+`nextera_mlm_logits` returns masked-LM logits for chosen positions, `nextera_classify` the
+logits of a classifier head, and `nextera_pooler_output` the pooled vector; see
 [`src/nexterabert.h`](src/nexterabert.h).
 
 ### Command line
@@ -166,6 +213,7 @@ nextera_free(ctx);
 build/bin/nexterabert-cli -m model.gguf --info
 build/bin/nexterabert-cli -m model.gguf --ids 50281,1000,2000,3000,50282
 build/bin/nexterabert-cli -m model.gguf --bench 128 --profile
+build/bin/nexterabert-cli -m classifier.gguf --ids 50281,1000,2000,3000,50282 --classify
 ```
 
 The command line takes token ids. The tokenizer is stored in the GGUF file and is rebuilt by
@@ -184,12 +232,14 @@ the Python binding.
 
 `nexterabert-quantize` also writes `F16`, `Q5_K_S`, `Q5_0`, and `Q3_K_M`, and
 `--tensor-type SUBSTRING=TYPE` overrides the type of matching tensors. Only the two-dimensional
-weights are quantized; norms, DyT curves, convolution kernels, and biases stay f32.
+weights are quantized; norms, DyT curves, convolution kernels, biases, segment embeddings, and
+the classifier's output layer stay f32.
 
 The `_M` files keep at Q6_K the tensors whose 4-bit error reaches the output most directly:
 every projection that writes into the residual stream (the mixers' and the MLP's `c_proj`), the
 attention value and gate projections, and the MLM head's dense layer. The choice was measured,
-not copied from llama.cpp.
+not copied from llama.cpp. The dense layers of the pooler and of the per-token classification
+heads are kept at Q6_K by analogy with the MLM head's; that was not measured.
 
 <details>
 <summary>Sensitivity of each tensor group to 4 bits</summary>
@@ -238,6 +288,7 @@ the two paths agree. Without AVX-VNNI the int8 path uses `vpmaddubsw` with 7-bit
 pip install torch transformers datasets scipy matplotlib
 python python/verify.py   --gguf models/*-f32.gguf models/*-Q8_0.gguf models/*-Q4_K_M.gguf
 python python/eval_mlm.py --gguf models/*-Q8_0.gguf models/*-Q4_K_M.gguf --json results/verify_mlm.json
+python python/verify_heads.py --types f32 Q8_0 Q4_K_M --json results/verify_heads.json
 python python/bench.py    --gguf models/*-Q4_K_M.gguf --extend-positions --lengths 128 512 1024 --batch 1 \
     --baselines google-bert/bert-base-uncased answerdotai/ModernBERT-base LiquidAI/LFM2.5-Encoder-230M
 python python/plot_results.py
@@ -252,8 +303,6 @@ The numbers behind this README are in [`results/`](results).
 - Built and measured with MSVC on Windows only. GCC and Clang builds are untested.
 - The GGUF files do not load in llama.cpp itself.
 - Tokenization needs the Python binding; the C API and the command line take token ids.
-- Single-segment inputs only. The pooler and the segment embeddings are not exported, and
-  fine-tuned classification or retrieval heads are not converted.
 
 ## Files
 
@@ -262,6 +311,7 @@ The numbers behind this README are in [`results/`](results).
 - `python/convert_hf_to_gguf.py`: Hugging Face checkpoint to GGUF
 - `python/nexterabert_cpp.py`: Python binding (`ctypes`) with the tokenizer
 - `python/verify.py`, `python/eval_mlm.py`, `python/bench.py`: comparison with PyTorch
+- `python/verify_heads.py`: pooler and classifier heads against PyTorch
 - `python/plot_results.py`: results figure
 - `results/`: measurements behind this README
 - `assets/summary.png`: results figure

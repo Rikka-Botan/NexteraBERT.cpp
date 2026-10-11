@@ -73,13 +73,13 @@ bool ends_with(const std::string & s, const char * suf) {
 //  * every projection that writes into the residual stream -- the mixers'
 //    c_proj and the MLP's c_proj;
 //  * the attention value projection and the sigmoid output gate;
-//  * the MLM head's dense transform.
+//  * the dense transform of the MLM head, of the per-token heads and of the pooler.
 // Queries / keys, the SnowLily input projections, the MLP up-projection and the
 // embedding matrix tolerate 4 bits far better and stay at the base type.
 bool wants_more_bits(const std::string & name) {
     return ends_with(name, ".attn.c_proj.weight") || ends_with(name, ".mlp.c_proj.weight")
         || ends_with(name, ".attn.c_v.weight") || ends_with(name, ".attn.c_gate.weight")
-        || name == "mlm.dense.weight";
+        || name == "mlm.dense.weight" || name == "head.dense.weight" || name == "pooler.dense.weight";
 }
 
 // K-quants pack 256 weights per super-block; rows that do not divide fall back
@@ -168,7 +168,9 @@ int main(int argc, char ** argv) {
         const size_t src_bytes = ggml_nbytes(t);
         bytes_in += src_bytes;
 
+        // The classifier is the output layer and a few kilobytes: it stays as it is.
         const bool is_matrix = ggml_n_dims(t) == 2 && ends_with(name, ".weight")
+                               && name != "classifier.weight"
                                && t->ne[0] >= 32 && t->ne[1] >= 32
                                && (t->type == GGML_TYPE_F32 || t->type == GGML_TYPE_F16);
         ggml_type target = t->type;

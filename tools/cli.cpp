@@ -2,7 +2,8 @@
 //
 //   nexterabert-cli -m model.gguf --info
 //   nexterabert-cli -m model.gguf --ids 50281,2,3,50282           embedding of one token sequence
-//   nexterabert-cli -m model.gguf --bench 128 [--batch 8]         time random sequences of 128 tokens
+//   nexterabert-cli -m model.gguf --ids 50281,2,3,50282 --classify   logits of the file's classifier head
+//   nexterabert-cli -m model.gguf --bench 128 [--batch 8]        time random sequences of 128 tokens
 //
 // Tokenization lives in the Python binding (python/nexterabert_cpp.py), which
 // reads tokenizer.json out of the same GGUF; the CLI works on token ids.
@@ -32,6 +33,9 @@ void usage(const char * argv0) {
         "  -t, --threads N     threads (default: all cores)\n"
         "  --info              print model / system info\n"
         "  --ids A,B,C         token ids of one sequence (repeat for a batch)\n"
+        "  --types A,B,C       segment ids of the preceding --ids (fine-tuned pair models)\n"
+        "  --classify          print the classifier head's logits instead of the embedding\n"
+        "  --pooler            print pooler_output instead of the mean-pooled embedding\n"
         "  --full              print whole embedding vectors instead of a preview\n"
         "  --no-normalize      do not L2-normalise the pooled embedding\n"
         "  --bench T           time forward passes over random sequences of T tokens\n"
@@ -61,8 +65,8 @@ int main(int argc, char ** argv) {
     std::string model;
     nextera_params params = nextera_default_params();
     params.verbosity = 1;
-    std::vector<std::vector<int32_t>> seqs;
-    bool info = false, full = false, normalize = true, profile = false;
+    std::vector<std::vector<int32_t>> seqs, types;
+    bool info = false, full = false, normalize = true, profile = false, classify = false, pooler = false;
     int bench_t = 0, batch = 1, reps = 20;
 
     for (int i = 1; i < argc; ++i) {
@@ -75,6 +79,14 @@ int main(int argc, char ** argv) {
         else if (a == "-t" || a == "--threads") params.n_threads = atoi(next());
         else if (a == "--info")                 info = true;
         else if (a == "--ids")                  seqs.push_back(parse_ids(next()));
+        else if (a == "--types") {
+            const char * v = next();
+            if (seqs.empty()) { usage(argv[0]); return 1; }
+            types.resize(seqs.size());
+            types.back() = parse_ids(v);
+        }
+        else if (a == "--classify")             classify = true;
+        else if (a == "--pooler")               pooler = true;
         else if (a == "--full")                 full = true;
         else if (a == "--no-normalize")         normalize = false;
         else if (a == "--bench")                bench_t = atoi(next());
@@ -100,31 +112,66 @@ int main(int argc, char ** argv) {
         printf("n_embd     : %d\n", n_embd);
         printf("n_vocab    : %d\n", nextera_n_vocab(ctx));
         printf("mlm head   : %s\n", nextera_has_mlm_head(ctx) ? "yes" : "no");
+        printf("pooler     : %s\n", nextera_has_pooler(ctx) ? "yes" : "no");
+        printf("segments   : %d\n", nextera_n_token_types(ctx));
+        if (*nextera_classifier_task(ctx)) {
+            const int n = nextera_n_labels(ctx);
+            printf("classifier : %s, %d labels", nextera_classifier_task(ctx), n);
+            for (int i = 0; i < n && *nextera_label(ctx, i); ++i) {
+                printf("%s%s%s", i ? ", " : " (", nextera_label(ctx, i), i + 1 == n ? ")" : "");
+            }
+            printf("\n");
+        } else {
+            printf("classifier : no\n");
+        }
         printf("tokenizer  : %zu bytes of tokenizer.json\n", strlen(nextera_tokenizer_json(ctx)));
         printf("n_threads  : %d\n", nextera_get_n_threads(ctx));
         printf("system     : %s\n", nextera_system_info(ctx));
     }
 
     if (!seqs.empty()) {
-        std::vector<int32_t> tokens, lengths;
-        for (const auto & s : seqs) {
-            tokens.insert(tokens.end(), s.begin(), s.end());
-            lengths.push_back((int32_t) s.size());
+        std::vector<int32_t> tokens, lengths, segs;
+        types.resize(seqs.size());
+        bool use_types = false;
+        for (size_t i = 0; i < seqs.size(); ++i) {
+            if (!types[i].empty() && types[i].size() != seqs[i].size()) {
+                fprintf(stderr, "--types must list one segment id per token of its --ids\n");
+                nextera_free(ctx);
+                return 1;
+            }
+            use_types = use_types || !types[i].empty();
+            types[i].resize(seqs[i].size(), 0);
+            tokens.insert(tokens.end(), seqs[i].begin(), seqs[i].end());
+            segs.insert(segs.end(), types[i].begin(), types[i].end());
+            lengths.push_back((int32_t) seqs[i].size());
         }
-        std::vector<float> pooled(seqs.size() * (size_t) n_embd);
-        if (nextera_encode(ctx, tokens.data(), lengths.data(), (int32_t) seqs.size(),
-                           nullptr, pooled.data(), normalize ? 1 : 0) != 0) {
+        const int32_t * tt = use_types ? segs.data() : nullptr;
+        const int32_t n_seqs = (int32_t) seqs.size();
+        const std::string task = nextera_classifier_task(ctx);
+        // rows of the result: one per token for the per-token heads, else one per sequence
+        const bool per_token = classify && (task == "token-classification" || task == "question-answering");
+        const int width = classify ? nextera_n_labels(ctx) : n_embd;
+        std::vector<float> out((per_token ? tokens.size() : seqs.size()) * (size_t) width);
+        const int32_t rc =
+            classify ? nextera_classify(ctx, tokens.data(), tt, lengths.data(), n_seqs, out.data())
+            : pooler ? nextera_pooler_output(ctx, tokens.data(), tt, lengths.data(), n_seqs, out.data())
+                     : nextera_encode_segments(ctx, tokens.data(), tt, lengths.data(), n_seqs,
+                                               nullptr, out.data(), normalize ? 1 : 0);
+        if (rc != 0) {
             nextera_free(ctx);
             return 1;
         }
+        const float * v = out.data();
         for (size_t s = 0; s < seqs.size(); ++s) {
-            const float * v = pooled.data() + s * n_embd;
-            const int n = full ? n_embd : std::min(n_embd, 8);
-            printf("[%zu] (%d tokens)", s, lengths[s]);
-            for (int i = 0; i < n; ++i) printf(" %.6f", v[i]);
-            printf(full ? "\n" : " ...\n");
+            const int n = full || classify ? width : std::min(width, 8);
+            for (int r = 0; r < (per_token ? lengths[s] : 1); ++r, v += width) {
+                if (per_token) printf("[%zu] token %d:", s, r);
+                else           printf("[%zu] (%d tokens)", s, lengths[s]);
+                for (int i = 0; i < n; ++i) printf(" %.6f", v[i]);
+                printf(n == width ? "\n" : " ...\n");
+            }
         }
-        fprintf(stderr, "encode: %.2f ms\n", nextera_last_ms(ctx));
+        fprintf(stderr, "%s: %.2f ms\n", classify ? "classify" : pooler ? "pooler" : "encode", nextera_last_ms(ctx));
     }
 
     if (bench_t > 0) {

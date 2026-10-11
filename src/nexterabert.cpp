@@ -13,6 +13,11 @@
 //                (AVX-VNNI / AVX2); float files, and builds without that kernel,
 //                use ggml's mul_mat on the file's own block format.
 //
+// On top of the encoder sit the heads a file may carry: the masked-LM head, the
+// pooler (mean pooling + transform) and a classifier over either the pooled
+// vector (sequence classification, multiple choice) or every token (token
+// classification, question answering).
+//
 // A forward pass takes any number of sequences and runs them *unpadded*: the
 // rows of all sequences are concatenated into one (n_embd, N) activation and
 // the position-mixing ops stop at sequence boundaries. This is exactly the
@@ -198,6 +203,12 @@ inline float softmax_exp(float * s, int n) {
 
 enum mixer_type { MIX_LILY, MIX_SWA, MIX_ATTN, MIX_HRA };
 enum ssmax_mode { SSMAX_SSSMAX, SSMAX_SSMAX, SSMAX_NONE };
+// What the classifier reads: the pooled vector (one row of logits per sequence)
+// or the transformed hidden states (one row per token).
+enum cls_task { CLS_NONE, CLS_SEQUENCE, CLS_CHOICE, CLS_TOKEN, CLS_QA };
+const char * const CLS_NAMES[] = {
+    "", "sequence-classification", "multiple-choice", "token-classification", "question-answering",
+};
 
 struct hparams {
     int32_t n_vocab = 0, n_embd = 0, n_layer = 0, n_inter = 0;
@@ -209,7 +220,11 @@ struct hparams {
     ssmax_mode ssmax = SSMAX_SSSMAX;
     std::vector<mixer_type> block_types;
     int32_t cls_id = -1, sep_id = -1, pad_id = -1, mask_id = -1;
-    bool    has_mlm = false;
+    bool    has_mlm = false, has_pooler = false;
+    int32_t n_types = 0;               // rows of the segment embedding (0: none in the file)
+    cls_task cls = CLS_NONE;
+    int32_t n_labels = 0;
+    std::vector<std::string> labels;   // id2label, may be empty
 };
 
 // Row layout of a batch of unpadded sequences ("documents").
@@ -327,6 +342,8 @@ struct nextera_context {
     layout                lay, blay;
     rope_table            rope[2];                // 0: attn / hra, 1: swa
     std::deque<op_params> ops;
+
+    bool has(const std::string & name) const { return tensors.count(name) > 0 || i8.count(name) > 0; }
 
     int32_t               debug_n_layers = -1;    // run only the first n blocks (and skip out_norm)
     profiler              prof;
@@ -637,6 +654,21 @@ void op_block_mean(ggml_tensor * dst, int ith, int nth, void * ud) {
             if (g) addmul_f32(out, rowf(h, ts + i), rowf(g, ts + i), C);
             else   axpy_f32(out, 1.0f, rowf(h, ts + i), C);
         }
+        const float inv = 1.0f / (float) n;
+        for (int c = 0; c < C; ++c) out[c] *= inv;
+    });
+}
+
+// Pooler: mean over each document's tokens. (C, rows) -> (C, documents)
+void op_doc_mean(ggml_tensor * dst, int ith, int nth, void * ud) {
+    op_params & p = *(op_params *) ud;
+    prof_scope ps(p.prof, PROF_ROWS, ith);
+    const ggml_tensor * x = dst->src[0];
+    const int C = (int) x->ne[0];
+    for_rows(dst, p, C, (int) p.lay->len.size(), nth, [&](int d, float * out) {
+        const int ts = p.lay->start[d], n = p.lay->len[d];
+        std::memset(out, 0, sizeof(float) * C);
+        for (int i = 0; i < n; ++i) axpy_f32(out, 1.0f, rowf(x, ts + i), C);
         const float inv = 1.0f / (float) n;
         for (int c = 0; c < C; ++c) out[c] *= inv;
     });
@@ -1236,8 +1268,9 @@ struct builder {
         return pre.substr(0, pre.size() - 1) + "_norm.weight";
     }
 
-    ggml_tensor * encoder(ggml_tensor * tokens) const {
+    ggml_tensor * encoder(ggml_tensor * tokens, ggml_tensor * types = nullptr) const {
         ggml_tensor * x = ggml_get_rows(g, w("embedding.weight"), tokens);
+        if (types) x = ggml_add(g, x, ggml_get_rows(g, w("token_type_embeddings.weight"), types));
         const int n_layer = c.debug_n_layers >= 0 ? std::min(c.debug_n_layers, c.hp.n_layer) : c.hp.n_layer;
         for (int l = 0; l < n_layer; ++l) {
             const std::string blk = "blocks." + std::to_string(l) + ".";
@@ -1258,6 +1291,29 @@ struct builder {
         if (c.debug_n_layers >= 0) return x;
         x = ggml_norm(g, x, c.hp.ln_eps);
         return ggml_add(g, ggml_mul(g, x, w("out_norm.weight")), w("out_norm.bias"));
+    }
+
+    // dense (no bias) -> GELU -> LayerNorm (gain only): the transform of the MLM
+    // head ("mlm."), of the per-token heads ("head.") and of the pooler ("pooler.")
+    ggml_tensor * transform(const std::string & pre, const act & x) const {
+        ggml_tensor * h = ggml_gelu_erf(g, linear(pre + "dense.weight", x));
+        return ggml_mul(g, ggml_norm(g, h, c.hp.ln_eps), w(pre + "norm.weight"));
+    }
+
+    // pooler_output: the transform of each document's mean hidden state. (C, rows) -> (C, documents)
+    ggml_tensor * pooler(ggml_tensor * x) const {
+        op_params * p = params();
+        p->lay = &c.lay;
+        const act m = row_op(op_doc_mean, {x}, x->ne[0], (int64_t) c.lay.len.size(), p,
+                             int8_only({"pooler.dense.weight"}));
+        return transform("pooler.", m);
+    }
+
+    // classifier logits: per document for the pooled tasks, per token for the others
+    ggml_tensor * classifier(ggml_tensor * x) const {
+        const bool pooled = c.hp.cls == CLS_SEQUENCE || c.hp.cls == CLS_CHOICE;
+        ggml_tensor * h = pooled ? pooler(x) : transform("head.", of(x));
+        return ggml_add(g, linear("classifier.weight", of(h)), w("classifier.bias"));
     }
 };
 
@@ -1422,6 +1478,43 @@ void log_callback(enum ggml_log_level level, const char * text, void *) {
     if (show) fputs(text, stderr);
 }
 
+// Every tensor the graph of this file's encoder and heads will ask for, so that
+// an incomplete file is refused when it is loaded instead of failing mid-forward.
+std::vector<std::string> required_tensors(const hparams & hp) {
+    std::vector<std::string> r = { "embedding.weight", "out_norm.weight", "out_norm.bias" };
+    auto add = [&r](const std::string & pre, std::initializer_list<const char *> names) {
+        for (const char * n : names) r.push_back(pre + n);
+    };
+    for (int l = 0; l < hp.n_layer && l < (int) hp.block_types.size(); ++l) {
+        const std::string blk = "blocks." + std::to_string(l) + ".", pre = blk + "attn.";
+        add(blk, { "attn_norm.weight", "mlp_norm.weight", "mlp.c_fc.weight", "mlp.c_proj.weight" });
+        add(pre, { "c_proj.weight" });
+        const mixer_type mt = hp.block_types[l];
+        if (mt == MIX_LILY) {
+            add(pre, { "ltc_conv.in_proj.weight", "ltc_conv.A.weight", "ltc_conv.kernel", "ltc_conv.out_proj.weight",
+                       "x_proj.weight", "B_proj.weight", "state_conv.depthwise.weight" });
+            continue;
+        }
+        add(pre, { "c_q.weight", "c_k.weight", "c_v.weight", "c_gate.weight",
+                   "q_norm.alpha", "q_norm.beta", "k_norm.alpha", "k_norm.beta" });
+        if (mt == MIX_HRA) {
+            add(pre, { "qkv_in.weight", "qkv_gate.weight", "c_C.weight",
+                       "qkv_conv.depthwise.weight", "c_o.depthwise.weight" });
+        }
+        if (mt != MIX_SWA && hp.ssmax != SSMAX_NONE) {
+            add(pre, { "scalable_factor.s" });
+            if (hp.ssmax == SSMAX_SSSMAX) add(pre, { "scalable_factor.b" });
+        }
+    }
+    if (hp.has_mlm) add("mlm.", { "dense.weight", "norm.weight", "bias" });
+    if (hp.cls != CLS_NONE) {
+        add("classifier.", { "weight", "bias" });
+        const bool pooled = hp.cls == CLS_SEQUENCE || hp.cls == CLS_CHOICE;
+        add(pooled ? "pooler." : "head.", { "dense.weight", "norm.weight" });
+    }
+    return r;
+}
+
 void reset_threadpool(nextera_context & c, int n_threads) {
     if (n_threads <= 0) {
         // All cores but ~10%: the pool's threads spin between graph nodes, so a
@@ -1501,10 +1594,24 @@ struct nextera_context * nextera_load(const char * path, struct nextera_params p
         const int64_t id = gguf_find_key(gg, "nexterabert.mlm_head");
         hp.has_mlm = id >= 0 && gguf_get_val_bool(gg, id);
     }
+    const std::string task = kv_str(gg, "nexterabert.classifier.task", "");
+    for (int i = CLS_SEQUENCE; i <= CLS_QA; ++i) {
+        if (task == CLS_NAMES[i]) hp.cls = (cls_task) i;
+    }
+    {
+        const int64_t id = gguf_find_key(gg, "nexterabert.classifier.labels");
+        for (size_t i = 0; id >= 0 && i < gguf_get_arr_n(gg, id); ++i) {
+            hp.labels.push_back(gguf_get_arr_str(gg, id, i));
+        }
+    }
     const std::string mode = kv_str(gg, "nexterabert.ssmax.mode", "sssmax");
     hp.ssmax = mode == "none" ? SSMAX_NONE : mode == "ssmax" ? SSMAX_SSMAX : SSMAX_SSSMAX;
 
     bool ok = true;
+    if (!task.empty() && hp.cls == CLS_NONE) {
+        fprintf(stderr, "nexterabert: unsupported classifier task '%s'\n", task.c_str());
+        ok = false;
+    }
     {
         const int64_t id = gguf_find_key(gg, "nexterabert.block_types");
         const size_t n = id < 0 ? 0 : gguf_get_arr_n(gg, id);
@@ -1552,8 +1659,9 @@ struct nextera_context * nextera_load(const char * path, struct nextera_params p
     for (int64_t i = 0; i < n_tensors; ++i) {
         const std::string name = gguf_get_tensor_name(gg, i);
         ggml_tensor * mt = ggml_get_tensor(meta, name.c_str());
-        // The embedding matrix is read row-wise (get_rows) and must keep its plain layout.
+        // The embedding matrices are read row-wise (get_rows) and must keep their plain layout.
         const bool gemm = name != "embedding.weight" && name != "mlm.decoder.weight"
+                          && name != "token_type_embeddings.weight"
                           && ggml_n_dims(mt) == 2 && ggml_is_quantized(mt->type);
 #if defined(NEXTERA_INT8)
         to_i8[i] = params.use_int8 && gemm && mt->ne[0] % 32 == 0 && mt->ne[1] % 4 == 0;
@@ -1605,6 +1713,22 @@ struct nextera_context * nextera_load(const char * path, struct nextera_params p
     fclose(f);
     gguf_free(gg);
     ggml_free(meta);
+
+    hp.has_pooler = c->has("pooler.dense.weight") && c->has("pooler.norm.weight");
+    if (ok && c->tensors.count("token_type_embeddings.weight")) {
+        hp.n_types = (int32_t) c->tensors["token_type_embeddings.weight"]->ne[1];
+    }
+    if (ok && hp.cls != CLS_NONE && c->tensors.count("classifier.bias")) {
+        hp.n_labels = (int32_t) c->tensors["classifier.bias"]->ne[0];
+        if ((int32_t) hp.labels.size() != hp.n_labels) hp.labels.clear();
+    }
+    for (const std::string & name : ok ? required_tensors(hp) : std::vector<std::string>()) {
+        if (c->has(name)) continue;
+        fprintf(stderr, "nexterabert: '%s' has no tensor '%s': not a complete nexterabert file "
+                        "(convert the checkpoint again with python/convert_hf_to_gguf.py)\n", path, name.c_str());
+        ok = false;
+        break;
+    }
     if (!ok) {
         nextera_free(c);
         return nullptr;
@@ -1643,6 +1767,9 @@ struct nextera_context * nextera_load(const char * path, struct nextera_params p
                 path, c->ftype.c_str(), hp.n_layer, hp.n_embd, bytes / 1048576.0,
                 (ggml_time_us() - t_start) / 1000.0);
         fprintf(stderr, "nexterabert: n_threads = %d | %s\n", c->n_threads, c->sysinfo.c_str());
+        if (hp.cls != CLS_NONE) {
+            fprintf(stderr, "nexterabert: classifier: %s, %d labels\n", CLS_NAMES[hp.cls], hp.n_labels);
+        }
     }
     return c;
 }
@@ -1664,6 +1791,13 @@ int32_t nextera_n_embd(const struct nextera_context * c)       { return c->hp.n_
 int32_t nextera_n_vocab(const struct nextera_context * c)      { return c->hp.n_vocab; }
 int32_t nextera_n_layer(const struct nextera_context * c)      { return c->hp.n_layer; }
 int32_t nextera_has_mlm_head(const struct nextera_context * c) { return c->hp.has_mlm ? 1 : 0; }
+int32_t nextera_has_pooler(const struct nextera_context * c)   { return c->hp.has_pooler ? 1 : 0; }
+int32_t nextera_n_token_types(const struct nextera_context * c) { return c->hp.n_types; }
+int32_t nextera_n_labels(const struct nextera_context * c)     { return c->hp.n_labels; }
+const char * nextera_classifier_task(const struct nextera_context * c) { return CLS_NAMES[c->hp.cls]; }
+const char * nextera_label(const struct nextera_context * c, int32_t i) {
+    return i >= 0 && i < (int32_t) c->hp.labels.size() ? c->hp.labels[i].c_str() : "";
+}
 int32_t nextera_token_cls(const struct nextera_context * c)    { return c->hp.cls_id; }
 int32_t nextera_token_sep(const struct nextera_context * c)    { return c->hp.sep_id; }
 int32_t nextera_token_pad(const struct nextera_context * c)    { return c->hp.pad_id; }
@@ -1716,20 +1850,42 @@ static bool check_tokens(const nextera_context & c, const int32_t * tokens, int3
     return true;
 }
 
-int32_t nextera_encode(struct nextera_context * c,
-                       const int32_t * tokens, const int32_t * lengths, int32_t n_seqs,
-                       float * hidden, float * pooled, int32_t normalize) {
+// Segment ids are only looked at by files that carry segment embeddings; a
+// checkpoint whose segment embeddings are all zero is converted without them.
+static bool check_types(const nextera_context & c, const int32_t * types, int32_t n) {
+    for (int32_t i = 0; types && c.hp.n_types > 0 && i < n; ++i) {
+        if (types[i] < 0 || types[i] >= c.hp.n_types) {
+            fprintf(stderr, "nexterabert: token type id %d out of range\n", types[i]);
+            return false;
+        }
+    }
+    return true;
+}
+
+enum head_kind { HEAD_NONE, HEAD_POOLER, HEAD_CLASSIFIER };
+
+// One forward pass of the encoder and at most one head.
+//   hidden / pooled  as in nextera_encode (HEAD_NONE only)
+//   head_out         pooler_output or classifier logits, rows as the graph produces them
+static int32_t run_forward(nextera_context * c, const int32_t * tokens, const int32_t * types,
+                           const int32_t * lengths, int32_t n_seqs, head_kind head,
+                           float * hidden, float * pooled, int32_t normalize, float * head_out) {
     const int64_t t_start = ggml_time_us();
     if (!prepare_batch(*c, lengths, n_seqs)) return 1;
     const int32_t N = c->lay.total, C = c->hp.n_embd;
-    if (!check_tokens(*c, tokens, N)) return 1;
+    if (!check_tokens(*c, tokens, N) || !check_types(*c, types, N)) return 1;
+    if (c->hp.n_types == 0) types = nullptr;
 
     ggml_context * g = new_graph_ctx(*c);
     ggml_cgraph * gf = ggml_new_graph_custom(g, GRAPH_NODES, false);
     ggml_tensor * inp = ggml_new_tensor_1d(g, GGML_TYPE_I32, N);
+    ggml_tensor * typ = types ? ggml_new_tensor_1d(g, GGML_TYPE_I32, N) : nullptr;
     ggml_set_input(inp);
+    if (typ) ggml_set_input(typ);
     builder b = { *c, g, {} };
-    ggml_tensor * out = b.encoder(inp);
+    ggml_tensor * out = b.encoder(inp, typ);
+    if (head == HEAD_POOLER)     out = b.pooler(out);
+    if (head == HEAD_CLASSIFIER) out = b.classifier(out);
     ggml_set_output(out);
     ggml_build_forward_expand(gf, out);
 
@@ -1738,8 +1894,11 @@ int32_t nextera_encode(struct nextera_context * c,
         rc = 2;
     } else {
         ggml_backend_tensor_set(inp, tokens, 0, sizeof(int32_t) * (size_t) N);
+        if (typ) ggml_backend_tensor_set(typ, types, 0, sizeof(int32_t) * (size_t) N);
         if (ggml_backend_graph_compute(c->backend, gf) != GGML_STATUS_SUCCESS) {
             rc = 3;
+        } else if (head != HEAD_NONE) {
+            std::memcpy(head_out, out->data, ggml_nbytes(out));
         } else {
             const float * od = (const float *) out->data;
             if (hidden) std::memcpy(hidden, od, sizeof(float) * (size_t) N * C);
@@ -1768,6 +1927,39 @@ int32_t nextera_encode(struct nextera_context * c,
     return rc;
 }
 
+int32_t nextera_encode(struct nextera_context * c,
+                       const int32_t * tokens, const int32_t * lengths, int32_t n_seqs,
+                       float * hidden, float * pooled, int32_t normalize) {
+    return run_forward(c, tokens, nullptr, lengths, n_seqs, HEAD_NONE, hidden, pooled, normalize, nullptr);
+}
+
+int32_t nextera_encode_segments(struct nextera_context * c,
+                                const int32_t * tokens, const int32_t * token_types,
+                                const int32_t * lengths, int32_t n_seqs,
+                                float * hidden, float * pooled, int32_t normalize) {
+    return run_forward(c, tokens, token_types, lengths, n_seqs, HEAD_NONE, hidden, pooled, normalize, nullptr);
+}
+
+int32_t nextera_pooler_output(struct nextera_context * c,
+                              const int32_t * tokens, const int32_t * token_types,
+                              const int32_t * lengths, int32_t n_seqs, float * out) {
+    if (!c->hp.has_pooler) {
+        fprintf(stderr, "nexterabert: this file has no pooler\n");
+        return 1;
+    }
+    return run_forward(c, tokens, token_types, lengths, n_seqs, HEAD_POOLER, nullptr, nullptr, 0, out);
+}
+
+int32_t nextera_classify(struct nextera_context * c,
+                         const int32_t * tokens, const int32_t * token_types,
+                         const int32_t * lengths, int32_t n_seqs, float * logits) {
+    if (c->hp.cls == CLS_NONE) {
+        fprintf(stderr, "nexterabert: this file has no classifier head\n");
+        return 1;
+    }
+    return run_forward(c, tokens, token_types, lengths, n_seqs, HEAD_CLASSIFIER, nullptr, nullptr, 0, logits);
+}
+
 int32_t nextera_mlm_logits(struct nextera_context * c,
                            const int32_t * tokens, int32_t n_tokens,
                            const int32_t * positions, int32_t n_pos,
@@ -1790,9 +1982,7 @@ int32_t nextera_mlm_logits(struct nextera_context * c,
     ggml_set_input(pos);
     builder b = { *c, g, {} };
     // dense -> GELU -> LayerNorm (no bias) -> tied decoder + bias, on the selected rows only
-    ggml_tensor * h = ggml_get_rows(g, b.encoder(inp), pos);
-    h = ggml_gelu_erf(g, b.linear("mlm.dense.weight", b.of(h)));
-    h = ggml_mul(g, ggml_norm(g, h, c->hp.ln_eps), b.w("mlm.norm.weight"));
+    ggml_tensor * h = b.transform("mlm.", b.of(ggml_get_rows(g, b.encoder(inp), pos)));
     const bool untied = c->tensors.count("mlm.decoder.weight") > 0;
     ggml_tensor * out = ggml_add(g, b.linear(untied ? "mlm.decoder.weight" : "embedding.weight", b.of(h)),
                                  b.w("mlm.bias"));

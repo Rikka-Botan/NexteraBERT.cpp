@@ -1,0 +1,194 @@
+[
+  {
+    "file": "sequence-classification-f32.gguf",
+    "ftype": "F32",
+    "task": "sequence-classification",
+    "n_labels": 3,
+    "labels": [
+      "negative",
+      "neutral",
+      "positive"
+    ],
+    "n_token_types": 2,
+    "rows": 8,
+    "logit_max_abs_diff": 7.152557373046875e-07,
+    "logit_cos": 0.9999999999993314,
+    "argmax_agreement": 1.0,
+    "pooler_cos_min": 0.9999999999998137
+  },
+  {
+    "file": "sequence-classification-Q8_0.gguf",
+    "ftype": "Q8_0",
+    "task": "sequence-classification",
+    "n_labels": 3,
+    "labels": [
+      "negative",
+      "neutral",
+      "positive"
+    ],
+    "n_token_types": 2,
+    "rows": 8,
+    "logit_max_abs_diff": 0.04066559672355652,
+    "logit_cos": 0.9974310158834808,
+    "argmax_agreement": 1.0,
+    "pooler_cos_min": 0.9990224832059538
+  },
+  {
+    "file": "sequence-classification-Q4_K_M.gguf",
+    "ftype": "Q4_K_M",
+    "task": "sequence-classification",
+    "n_labels": 3,
+    "labels": [
+      "negative",
+      "neutral",
+      "positive"
+    ],
+    "n_token_types": 2,
+    "rows": 8,
+    "logit_max_abs_diff": 0.08963331580162048,
+    "logit_cos": 0.983256315572523,
+    "argmax_agreement": 1.0,
+    "pooler_cos_min": 0.9954588507863702
+  },
+  {
+    "file": "multiple-choice-f32.gguf",
+    "ftype": "F32",
+    "task": "multiple-choice",
+    "n_labels": 1,
+    "labels": [
+      "LABEL_0"
+    ],
+    "n_token_types": 2,
+    "rows": 8,
+    "logit_max_abs_diff": 7.152557373046875e-07,
+    "logit_cos": 0.9999999999995306,
+    "pooler_cos_min": 0.9999999999998137
+  },
+  {
+    "file": "multiple-choice-Q8_0.gguf",
+    "ftype": "Q8_0",
+    "task": "multiple-choice",
+    "n_labels": 1,
+    "labels": [
+      "LABEL_0"
+    ],
+    "n_token_types": 2,
+    "rows": 8,
+    "logit_max_abs_diff": 0.04066559672355652,
+    "logit_cos": 0.9984575211677603,
+    "pooler_cos_min": 0.9993312521519301
+  },
+  {
+    "file": "multiple-choice-Q4_K_M.gguf",
+    "ftype": "Q4_K_M",
+    "task": "multiple-choice",
+    "n_labels": 1,
+    "labels": [
+      "LABEL_0"
+    ],
+    "n_token_types": 2,
+    "rows": 8,
+    "logit_max_abs_diff": 0.05809231102466583,
+    "logit_cos": 0.996162298469477,
+    "pooler_cos_min": 0.9965712837112044
+  },
+  {
+    "file": "token-classification-f32.gguf",
+    "ftype": "F32",
+    "task": "token-classification",
+    "n_labels": 5,
+    "labels": [
+      "O",
+      "B-PER",
+      "I-PER",
+      "B-LOC",
+      "I-LOC"
+    ],
+    "n_token_types": 2,
+    "rows": 866,
+    "logit_max_abs_diff": 4.589557647705078e-06,
+    "logit_cos": 0.9999999999991181,
+    "argmax_agreement": 1.0
+  },
+  {
+    "file": "token-classification-Q8_0.gguf",
+    "ftype": "Q8_0",
+    "task": "token-classification",
+    "n_labels": 5,
+    "labels": [
+      "O",
+      "B-PER",
+      "I-PER",
+      "B-LOC",
+      "I-LOC"
+    ],
+    "n_token_types": 2,
+    "rows": 866,
+    "logit_max_abs_diff": 0.09278911352157593,
+    "logit_cos": 0.9990177587442374,
+    "argmax_agreement": 0.9491916859122402
+  },
+  {
+    "file": "token-classification-Q4_K_M.gguf",
+    "ftype": "Q4_K_M",
+    "task": "token-classification",
+    "n_labels": 5,
+    "labels": [
+      "O",
+      "B-PER",
+      "I-PER",
+      "B-LOC",
+      "I-LOC"
+    ],
+    "n_token_types": 2,
+    "rows": 866,
+    "logit_max_abs_diff": 0.23124027252197266,
+    "logit_cos": 0.9939598452660667,
+    "argmax_agreement": 0.9122401847575058
+  },
+  {
+    "file": "question-answering-f32.gguf",
+    "ftype": "F32",
+    "task": "question-answering",
+    "n_labels": 2,
+    "labels": [
+      "LABEL_0",
+      "LABEL_1"
+    ],
+    "n_token_types": 2,
+    "rows": 866,
+    "logit_max_abs_diff": 4.589557647705078e-06,
+    "logit_cos": 0.9999999999990743,
+    "argmax_agreement": 1.0
+  },
+  {
+    "file": "question-answering-Q8_0.gguf",
+    "ftype": "Q8_0",
+    "task": "question-answering",
+    "n_labels": 2,
+    "labels": [
+      "LABEL_0",
+      "LABEL_1"
+    ],
+    "n_token_types": 2,
+    "rows": 866,
+    "logit_max_abs_diff": 0.07369635999202728,
+    "logit_cos": 0.9989298192659471,
+    "argmax_agreement": 0.964203233256351
+  },
+  {
+    "file": "question-answering-Q4_K_M.gguf",
+    "ftype": "Q4_K_M",
+    "task": "question-answering",
+    "n_labels": 2,
+    "labels": [
+      "LABEL_0",
+      "LABEL_1"
+    ],
+    "n_token_types": 2,
+    "rows": 866,
+    "logit_max_abs_diff": 0.18271863460540771,
+    "logit_cos": 0.993254989784006,
+    "argmax_agreement": 0.953810623556582
+  }
+]

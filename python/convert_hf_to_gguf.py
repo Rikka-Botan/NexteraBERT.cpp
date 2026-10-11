@@ -4,12 +4,20 @@
     python python/convert_hf_to_gguf.py RikkaBotan/NexteraBERT-Mezzoforte-220M-en \
         --outfile models/nexterabert-mezzoforte-220m-en-f32.gguf
 
+Both checkpoint layouts are read: the pretrained backbone (bare encoder keys, the
+masked-LM head in ``mlm_head.safetensors``) and a model fine-tuned and saved with
+``save_pretrained`` (``encoder.``-prefixed keys plus its task head). The head of a
+fine-tuned ``AutoModelForSequenceClassification`` / ``MultipleChoice`` /
+``TokenClassification`` / ``QuestionAnswering`` / ``MaskedLM`` checkpoint is
+converted with it; ``--task`` overrides what ``config.json`` says it is.
+
 The output is a float GGUF (f32 or f16). Quantize it afterwards with
 ``nexterabert-quantize`` (the same split as llama.cpp's convert / llama-quantize).
 
 Only numpy, safetensors and gguf are needed -- no torch. The file is fully
 self-contained: hyperparameters, weights, the MLM head and the tokenizer
-(``tokenizer.json`` verbatim under ``tokenizer.huggingface.json``).
+(``tokenizer.json`` verbatim under ``tokenizer.huggingface.json``) and, for a
+classifier, its task and label names.
 """
 from __future__ import annotations
 
@@ -26,10 +34,42 @@ import gguf
 ARCH = "nexterabert"
 SUPPORTED_MIXERS = ("lily", "swa", "attn", "hra")
 
-# Never used at inference: the pooler is not trained by MLM pretraining (it only
-# exists for sequence-classification fine-tunes) and the segment embeddings are
-# zero unless a pair task trained them.
-SKIP_PREFIXES = ("pooler.",)
+ENCODER_PREFIX = "encoder."
+
+# classifier task -> (config.json "architectures" marker, tensors its head needs)
+POOLED_HEAD = ("pooler.dense.weight", "pooler.norm.weight", "classifier.weight", "classifier.bias")
+TOKEN_HEAD = ("head.dense.weight", "head.norm.weight", "classifier.weight", "classifier.bias")
+TASKS = {
+    "sequence-classification": ("ForSequenceClassification", POOLED_HEAD),
+    "multiple-choice": ("ForMultipleChoice", POOLED_HEAD),
+    "token-classification": ("ForTokenClassification", TOKEN_HEAD),
+    "question-answering": ("ForQuestionAnswering", TOKEN_HEAD),
+}
+
+
+def split_checkpoint(state: dict) -> tuple[dict, dict]:
+    """(encoder tensors under their bare names, everything else)."""
+    if not any(k.startswith(ENCODER_PREFIX) for k in state):
+        return dict(state), {}
+    enc = {k[len(ENCODER_PREFIX):]: v for k, v in state.items() if k.startswith(ENCODER_PREFIX)}
+    return enc, {k: v for k, v in state.items() if not k.startswith(ENCODER_PREFIX)}
+
+
+def detect_task(cfg: dict, head: dict) -> str | None:
+    if "classifier.weight" not in head:
+        return None
+    arch = " ".join(cfg.get("architectures") or [])
+    for task, (marker, _) in TASKS.items():
+        if marker in arch:
+            return task
+    # no architecture recorded: only the per-token heads have a transform of their own
+    return "token-classification" if "head.dense.weight" in head else "sequence-classification"
+
+
+def label_names(cfg: dict, n_labels: int) -> list[str]:
+    id2label = cfg.get("id2label") or {}
+    names = [str(id2label.get(str(i), id2label.get(i, ""))) for i in range(n_labels)]
+    return names if len(id2label) == n_labels and all(names) else []
 
 
 def resolve_model_dir(model: str, revision: str | None) -> Path:
@@ -53,6 +93,11 @@ def main() -> int:
     ap.add_argument("--revision", default=None)
     ap.add_argument("--no-mlm-head", action="store_true",
                     help="leave the masked-LM head out (embedding-only file)")
+    ap.add_argument("--task", choices=("auto", "none", *TASKS), default="auto",
+                    help="classifier head to convert (default: what the checkpoint holds)")
+    ap.add_argument("--pooler", action="store_true",
+                    help="keep the pooler without a classifier on it (for pooler_output; "
+                         "the pooler of a pretrained backbone is untrained)")
     args = ap.parse_args()
 
     src = resolve_model_dir(args.model, args.revision)
@@ -67,33 +112,60 @@ def main() -> int:
     if int(cfg.get("expand", 1)) * cfg["n_embd"] % cfg["n_head"]:
         raise SystemExit("expand * n_embd must be divisible by n_head")
 
-    state = load_file(str(src / "model.safetensors"))
-    tte = state.pop("token_type_embeddings.weight", None)
-    if tte is not None and np.any(tte != 0):
-        print("warning: token_type_embeddings are non-zero; the runtime ignores "
-              "segment ids (single-segment inputs only)", file=sys.stderr)
+    state, head = split_checkpoint(load_file(str(src / "model.safetensors")))
+    if "embedding.weight" not in state:
+        raise SystemExit(f"{src / 'model.safetensors'} is not a NexteraBERT checkpoint: "
+                         "it has neither 'embedding.weight' nor 'encoder.embedding.weight'")
+
+    task = detect_task(cfg, head) if args.task == "auto" else None if args.task == "none" else args.task
+    pooled_task = task is not None and TASKS[task][1] is POOLED_HEAD
 
     tensors: dict[str, np.ndarray] = {}
     for name, arr in state.items():
-        if name.startswith(SKIP_PREFIXES):
+        # The pooler is only trained by a task that classifies its output.
+        if name.startswith("pooler.") and not (pooled_task or args.pooler):
+            continue
+        # Segment embeddings are zero until a pair task trains them, and add nothing then.
+        if name == "token_type_embeddings.weight" and not np.any(arr != 0):
             continue
         # Conv1d depthwise weights are (C, 1, k): drop the group axis.
         if arr.ndim == 3 and arr.shape[1] == 1:
             arr = arr[:, 0, :]
         tensors[name] = arr
+    if args.pooler and "pooler.dense.weight" not in tensors:
+        raise SystemExit("--pooler: the checkpoint has no pooler")
 
+    labels: list[str] = []
+    if task is not None:
+        missing = [n for n in TASKS[task][1] if n not in head and n not in tensors]
+        if missing:
+            raise SystemExit(f"task '{task}' needs {missing}, which the checkpoint does not have")
+        for name in TASKS[task][1]:
+            if name in head:
+                tensors[name] = head.pop(name)
+        labels = label_names(cfg, tensors["classifier.bias"].shape[0])
+
+    # The masked-LM head: next to the backbone, or inside a saved AutoModelForMaskedLM.
     has_mlm = False
-    mlm_path = src / "mlm_head.safetensors"
-    if not args.no_mlm_head and mlm_path.exists():
-        head = load_file(str(mlm_path))
-        tensors["mlm.dense.weight"] = head["head.dense.weight"]
-        tensors["mlm.norm.weight"] = head["head.norm.weight"]
-        tensors["mlm.bias"] = head["lm_head.bias"]
-        if "lm_head.weight" in head:          # untied decoder
-            tensors["mlm.decoder.weight"] = head["lm_head.weight"]
-        elif not cfg.get("tie_word_embeddings", True):
-            raise SystemExit("untied MLM decoder weight is missing from mlm_head.safetensors")
+    mlm = None
+    if task is None and "lm_head.bias" in head:
+        mlm = {k: head.pop(k) for k in list(head) if k.startswith(("head.", "lm_head."))}
+    elif (src / "mlm_head.safetensors").exists():
+        mlm = load_file(str(src / "mlm_head.safetensors"))
+    if mlm is not None and not args.no_mlm_head:
+        tensors["mlm.dense.weight"] = mlm["head.dense.weight"]
+        tensors["mlm.norm.weight"] = mlm["head.norm.weight"]
+        tensors["mlm.bias"] = mlm["lm_head.bias"]
+        if not cfg.get("tie_word_embeddings", True):      # untied decoder
+            if "lm_head.weight" not in mlm:
+                raise SystemExit("untied MLM decoder weight is missing from the checkpoint")
+            tensors["mlm.decoder.weight"] = mlm["lm_head.weight"]
         has_mlm = True
+
+    if args.task == "none":
+        head = {k: v for k, v in head.items() if not k.startswith(("classifier.", "head."))}
+    if head:
+        raise SystemExit(f"tensors this converter does not know: {sorted(head)}")
 
     args.outfile.parent.mkdir(parents=True, exist_ok=True)
     w = gguf.GGUFWriter(str(args.outfile), ARCH)
@@ -124,6 +196,10 @@ def main() -> int:
     w.add_float32(k + "rms_norm_epsilon", 1e-8)      # RMSNorm default in the model code
     w.add_float32(k + "layer_norm_epsilon", 1e-5)    # nn.LayerNorm default
     w.add_bool(k + "mlm_head", has_mlm)
+    if task is not None:
+        w.add_string(k + "classifier.task", task)
+        if labels:
+            w.add_array(k + "classifier.labels", labels)
 
     w.add_string("tokenizer.huggingface.json",
                  (src / "tokenizer.json").read_text(encoding="utf-8"))
@@ -150,7 +226,8 @@ def main() -> int:
     w.close()
     size = args.outfile.stat().st_size / 2**20
     print(f"wrote {args.outfile}  ({len(tensors)} tensors, {n_params/1e6:.1f}M params, "
-          f"{size:.1f} MiB, {args.outtype}, mlm_head={has_mlm})")
+          f"{size:.1f} MiB, {args.outtype}, mlm_head={has_mlm}, classifier={task}"
+          + (f" ({tensors['classifier.bias'].shape[0]} labels)" if task else "") + ")")
     return 0
 
 
